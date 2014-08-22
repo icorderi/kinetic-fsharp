@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+  <metadata>
+    <id>@project@</id>
+    <version>@build.number@</version>
+    <authors>@authors@</authors>
+    <owners>@authors@</owners>
+    <licenseUrl>https://github.com/icorderi/kinetic-fsharp/blob/master/LICENSE.txt</licenseUrl>
+    <projectUrl>https://github.com/icorderi/kinetic-fsharp</projectUrl>
+    <iconUrl></iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>@description@</description>
+    <releaseNotes>@releaseNotes@</releaseNotes>
+    <copyright>Copyright Ignacio Corderi 2014</copyright>
+    <tags>@tags@</tags>
+    @dependencies@
+    @references@
+  </metadata>
+  @files@
+</package>
