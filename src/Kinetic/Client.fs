@@ -5,7 +5,6 @@ open Seagate.Kinetic.Proto
 open Seagate.Kinetic.Network
 open Seagate.Kinetic.Model
 open Seagate.Kinetic.Model.Builders
-open Seagate.Kinetic.Model.Parsers
 
 type Promise<'T>()=
 

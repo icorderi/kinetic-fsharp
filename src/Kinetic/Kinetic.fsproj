@@ -38,6 +38,10 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="FSharp.Core" />
+    <Reference Include="protobuf-net">
+      <HintPath>..\..\packages\protobuf-net.2.0.0.668\lib\net40\protobuf-net.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
@@ -63,18 +67,20 @@
   </Target>
   -->
   <ItemGroup>
+    <Compile Include="Log.fs" />
     <Compile Include="BlockingQueueAgent.fs">
     </Compile>
     <Compile Include="AccumulatorAgent.fs" />
-    <Compile Include="SemaphoreAgent.fs" />
     <Compile Include="CountdownAgent.fs" />
-    <Compile Include="Log.fs" />
+    <Compile Include="SemaphoreAgent.fs" />
     <Compile Include="Proto.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="Builders.fs" />
-    <Compile Include="Parsers.fs" />
     <Compile Include="Network.fs" />
     <Compile Include="Client.fs" />
     <Compile Include="ClientPool.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>
