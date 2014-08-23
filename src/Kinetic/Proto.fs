@@ -190,10 +190,253 @@ type Setup() = class end
 type P2POperation() = class end
 
 
+type LogType =
+    | INVALID_TYPE = -1
+    | UTILIZATIONS = 0
+    | TEMPERATURES = 1
+    | CAPACITIES = 2
+    | CONFIGURATION = 3
+    | STATISTICS = 4
+    | MESSAGES = 5
+    | LIMITS = 6
+    | DEVICE = 7
+
+
 [<ProtoContract>]
 [<AllowNullLiteral>]
-type GetLog() = class end
+type Utilization() =
+    
+    /// The name of the utilization being reported. These names can be standard and proprietary. The
+    /// standard names are "HDA", "EN0" and "EN1". If there are more items that are
+    /// being reported, such as processor utilization, can have a descriptive name.
+    [<ProtoMember(1)>]
+    member val Name : string = null with get,set
 
+    /// A number between 0.00 and 1.00. The resolution of this number is up to the
+    /// drive. 1 means 100% utilized.
+    [<ProtoMember(2)>]
+    member val Value : float = 0. with get,set
+
+       
+[<ProtoContract>]
+[<AllowNullLiteral>]
+type Temperature() =
+    
+    /// The name of the temperature being reported. These names can be standard and proprietary. The
+    /// standard name is "HDA". If there are more items that are
+    /// being reported, such as processor temperature, can have a descriptive name.
+    [<ProtoMember(1)>]
+    member val Name : string = null with get,set
+
+    /// The current temperature in degrees c
+    [<ProtoMember(2)>]
+    member val Current : float = 0. with get,set
+
+    [<ProtoMember(2)>]
+    member val Minimum : float = 0. with get,set
+
+    [<ProtoMember(2)>]
+    member val Maximum : float = 0. with get,set
+
+    [<ProtoMember(2)>]
+    member val Target : float = 0. with get,set
+
+
+[<ProtoContract>]
+[<AllowNullLiteral>]
+type Capacity() =
+
+    // 1-3 are reserved
+
+    /// These capacities are in bytes.
+    [<ProtoMember(4)>]
+    member val NominalCapacityInBytes : System.UInt64 = 0UL with get,set
+
+    /// A number between 0.00 and 1.00. The resolution of this number is up to the
+    /// drive. 1 means 100% utilized.
+    [<ProtoMember(5)>]
+    member val PortionFull : float = 0. with get,set
+
+
+[<ProtoContract>]
+[<AllowNullLiteral>]
+type Interface() =
+
+    [<ProtoMember(1)>]
+    member val Name : string = null with get,set
+
+    [<ProtoMember(2)>]
+    member val MAC : bytes = null with get,set
+
+    [<ProtoMember(3)>]
+    member val ipv4Address : bytes = null with get,set
+
+    [<ProtoMember(4)>]
+    member val ipv6Address : bytes = null with get,set
+
+
+[<ProtoContract>]
+[<AllowNullLiteral>]
+type Configuration() =
+
+    // 1-4 are reserved
+
+    /// name of the vendor. For example "Seagate"
+    [<ProtoMember(5)>]
+    member val Vendor : string = null with get,set
+
+    /// The model of the device.
+    /// "Simulator" for the simulator.
+    [<ProtoMember(6)>]
+    member val Model : string = null with get,set
+
+    /// Device Serial number (SN)
+    [<ProtoMember(7)>]
+    member val SerialNumber : bytes = null with get,set 
+
+     /// Device world wide name (WWN)
+    [<ProtoMember(14)>]
+    member val WorldWideName : bytes = null with get,set 
+
+    /// This is the vendor specific version of the software on the drive in dot notation
+    /// if this is not set or ends with "x" this is test code.
+    [<ProtoMember(8)>]
+    member val Version : string = null with get,set
+
+    [<ProtoMember(12)>]
+    member val CompilationDate : string = null with get,set
+     
+    [<ProtoMember(13)>]
+    member val SourceHash : string = null with get,set
+
+    /// This is the version of the protocol (.proto file) that the drive uses.
+    /// This is not the highest or lowest version that is supported, just
+    /// the version that was compiled.
+    [<ProtoMember(15)>]
+    member val ProtocolVersion : string = null with get,set
+
+    [<ProtoMember(16)>]
+    member val ProtocolCompilationDate : string = null with get,set
+
+    [<ProtoMember(17)>]
+    member val ProtocolSourceHash : string = null with get,set
+
+    /// the interfaces for this device. one per interface.
+    [<ProtoMember(9)>]
+    member val Interfaces : List<Interface> = new List<Interface>() with get,set
+
+    /// these are the port numbers for the software
+    [<ProtoMember(10)>]
+    member val Port : int = 0 with get,set
+
+    [<ProtoMember(11)>]
+    member val TlsPort : int = 0 with get,set
+
+/// These numbers start at 0 when the drive starts up and never wraps or resets.
+[<ProtoContract>]
+[<AllowNullLiteral>]
+type Statistics() =
+
+    [<ProtoMember(1)>]
+    member val MessageType : MessageType = MessageType.INVALID_MESSAGE_TYPE with get,set
+
+    // 2 and 3 are reserved, do not use
+
+    [<ProtoMember(4)>]
+    member val Count : System.UInt64 = 0UL with get,set
+
+    /// This is the sum of the data that is in the data portion. This does not include t
+    /// the command description. For P2P operations, this is the amount of data moved between
+    /// drives
+    [<ProtoMember(5)>]
+    member val Bytes : System.UInt64 = 0UL with get,set
+
+
+[<ProtoContract>]
+[<AllowNullLiteral>]
+type DeviceLimits() =
+
+    [<ProtoMember(1)>]
+    member val maxKeySize : int = 0 with get,set
+
+    [<ProtoMember(2)>]
+    member val maxValueSize : int = 0 with get,set
+   
+    [<ProtoMember(3)>]
+    member val maxVersionSize : int = 0 with get,set
+
+    [<ProtoMember(4)>]
+    member val maxTagSize : int = 0 with get,set
+
+    [<ProtoMember(5)>]
+    member val maxConnections : int = 0 with get,set
+
+    [<ProtoMember(6)>]
+    member val maxOutstandingReadRequests : int = 0 with get,set
+
+    [<ProtoMember(7)>]
+    member val maxOutstandingWriteRequests : int = 0 with get,set
+
+    [<ProtoMember(8)>]
+    member val maxMessageSize : int = 0 with get,set
+
+    [<ProtoMember(9)>]
+    member val maxKeyRangeCount : int = 0 with get,set
+
+    [<ProtoMember(10)>]
+    member val maxIdentityCount : int = 0 with get,set
+
+
+[<ProtoContract>]
+[<AllowNullLiteral>]
+type DeviceLog() =
+
+    /// The Device GetLog message is to ask the device to send back the
+    /// log of a certain name in the value field. The limit of each
+    /// log is 1m byte.
+    ///
+    /// Proprietary names should be prefaced by the vendor name so that name
+    /// collisions do not happen in the future. An example could be names that
+    /// start with “com.WD” would be for Western Digital devices.
+    ///
+    /// If the name is not found, the get log returns NOT_FOUND.
+    ///
+    /// There can be only one Device in the list of logs that can be retrieved.!
+    [<ProtoMember(1)>]
+    member val Name : bytes = null with get,set
+
+
+[<ProtoContract>]
+[<AllowNullLiteral>]
+type GetLog() = 
+  
+    [<ProtoMember(1)>]
+    member val Types : List<LogType> = new List<LogType>() with get,set
+
+    [<ProtoMember(2)>]
+    member val Utilizations : List<Utilization> = new List<Utilization>() with get,set
+
+    [<ProtoMember(3)>]
+    member val Temperatures : List<Temperature> = new List<Temperature>() with get,set
+
+    [<ProtoMember(4)>]
+    member val Capacity : Capacity = null with get,set
+
+    [<ProtoMember(5)>]
+    member val Configuration : Configuration = null with get,set
+
+    [<ProtoMember(6)>]
+    member val Statistics : List<Statistics> = new List<Statistics>() with get,set
+
+    [<ProtoMember(7)>]
+    member val Messages : bytes = null with get,set
+
+    [<ProtoMember(8)>]
+    member val Limits : DeviceLimits = null with get,set
+
+    [<ProtoMember(9)>]
+    member val Device : DeviceLog = null with get,set
+      
 
 [<ProtoContract>]
 [<AllowNullLiteral>]

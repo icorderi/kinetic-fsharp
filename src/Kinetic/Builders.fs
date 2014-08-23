@@ -42,6 +42,15 @@ type Delete with
         y.Synchronization <- x.Synchronization
         msg // return the modified message
 
+type GetLog with 
+    member x.Build (msg : Message) = 
+        msg.Command.Header.MessageType <- MessageType.GETLOG
+        msg.Command.Body <- Body(GetLog = Kinetic.Proto.GetLog())
+
+        let y = msg.Command.Body.GetLog       
+        y.Types.AddRange x.Types
+        msg // return the modified message
+
 let buildNoop (msg : Message) = 
     msg.Command.Header.MessageType <- MessageType.NOOP
     msg // return the modified message
@@ -53,3 +62,4 @@ type Command with
         | Put c -> c.Build
         | Get c -> c.Build
         | Delete c -> c.Build
+        | GetLog c -> c.Build

@@ -74,19 +74,24 @@ type Delete = {
     Synchronization : Synchronization
     }
 
+/// Represents a getLog command
+type GetLog = { 
+    Types : List<LogType> 
+    }
+// -------------------------------------------------------------------
+
 /// Union type all commands
 type Command =
     | Noop
     | Get of Get
     | Put of Put
     | Delete of Delete
+    | GetLog of GetLog
 
     member x.Value =
         match x with
-        | Noop -> None
-        | Get _ -> None
         | Put c -> c.Value
-        | Delete _ -> None
+        | _ -> None
 
 // -------------------------------------------------------------------
 // Reponses
