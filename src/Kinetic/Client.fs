@@ -130,6 +130,7 @@ type Client(host:string, port:int) as this =
                                    (fun (host:string, port:int, callback, state) -> tcp.BeginConnect(host, port, callback, state)),
                                    (fun iar -> 
                                         tcp.EndConnect(iar)
+                                        tcp.Client.NoDelay <- true
                                         running <- true
                                         receiver |> Async.Start
                                         sender |> Async.Start
