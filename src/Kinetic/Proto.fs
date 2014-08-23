@@ -1,4 +1,4 @@
-﻿namespace Seagate.Kinetic.Proto
+﻿namespace Kinetic.Proto
 
 open ProtoBuf
 open System.Collections.Generic
@@ -69,7 +69,7 @@ type Header() =
 
     /// The "user" identifies the user and the key and algorithm to be used for hmac. (See security document).
     [<ProtoMember(2)>]
-    member val User : int64 = 0L with get,set
+    member val Identity : int64 = 0L with get,set
 
     /// A unique number for this connection between the source and target. On the first request
     /// to the drive, this should be the time of day in seconds since 1970. The drive can change this

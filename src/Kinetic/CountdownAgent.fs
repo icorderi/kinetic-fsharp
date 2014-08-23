@@ -14,7 +14,7 @@ type internal CountdownAgentMessage<'T> =
     | Tick
     | AsyncWait of AsyncReplyChannel<unit>
 
-/// Agent that implements an asynchronous sempahore
+/// Agent that implements an asynchronous countdown
 type CountdownAgent(startingValue) =
 
     [<VolatileField>]

@@ -14,7 +14,7 @@ type internal SemaphoreAgentMessage<'T> =
     | Release
     | AsyncWait of AsyncReplyChannel<unit>
 
-/// Agent that implements an asynchronous countdown
+/// Agent that implements an asynchronous sempahore
 type SemaphoreAgent(limit) =
 
     [<VolatileField>]

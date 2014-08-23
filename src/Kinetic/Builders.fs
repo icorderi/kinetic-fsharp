@@ -1,8 +1,8 @@
 ﻿/// This module contains extension methods for command record values to populate raw proto messages.
-module Seagate.Kinetic.Model.Builders
+module Kinetic.Model.Builders
 
-open Seagate.Kinetic.Proto
-open Seagate.Kinetic.Model
+open Kinetic.Proto
+open Kinetic.Model
 
 type Get with 
     member x.Build (msg : Message) = 

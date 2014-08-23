@@ -1,6 +1,6 @@
-﻿namespace Seagate.Kinetic.Model
+﻿namespace Kinetic.Model
 
-open Seagate.Kinetic.Proto
+open Kinetic.Proto
 
 /// Represents possible value sources for bytes
 type Bytes =
@@ -16,7 +16,15 @@ type Bytes =
     /// Defer creation or consumption of bytes until needed for transfer
     | Lazy of Async<Bytes>
 
-type Bytes with 
+    override x.ToString() =
+        match x with 
+        | None -> ""
+        | Bytes bs -> System.Text.UTF8Encoding.UTF8.GetString(bs)
+        | View (bs, offset, length) -> "Some view"
+        | Stream (s, length) -> "Why are you doing this?"
+        | String s -> s
+        | Lazy a -> "[<Lazy>]" 
+
     /// Gets the actual bytes. 
     /// Lazy values will block until bytes are produced.
     member x.Consume() = 
@@ -28,7 +36,7 @@ type Bytes with
         | String s -> System.Text.Encoding.UTF8.GetBytes(s)
         | Lazy a -> let x2 = a |> Async.RunSynchronously
                     x2.Consume()      
- 
+                      
 // -------------------------------------------------------------------
 // Exceptions
 // -------------------------------------------------------------------

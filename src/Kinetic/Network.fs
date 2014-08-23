@@ -1,10 +1,10 @@
-﻿module Seagate.Kinetic.Network
+﻿module Kinetic.Network
 
 open System.IO
 open ProtoBuf
 open System.Net.Sockets
 open System.Security.Cryptography
-open Seagate.Kinetic.Proto
+open Kinetic.Proto
 
 type KineticClient = TcpClient
 
@@ -37,7 +37,7 @@ let rec safeReadAsync (stream : Stream) buffer offset length =
             do! safeReadAsync stream buffer (offset + read) (length - read)
     }
 
-let ReceiveAsync (client : KineticClient) : Async<Message * bytes option> =
+let AsyncReceive (client : KineticClient) : Async<Message * bytes option> =
     async {
         let ns = client.GetStream()
         let buffer = Array.zeroCreate 9
@@ -59,10 +59,6 @@ let ReceiveAsync (client : KineticClient) : Async<Message * bytes option> =
     }
 
 type Stream with
-    member x.WriteAsync buffer offset count = 
-        Async.FromBeginEnd(buffer, offset, count,
-                            (fun (buffer, offset, count, callback, state) -> x.BeginWrite(buffer, offset, count, callback, state)),
-                            x.EndWrite)
 
     member x.ReadAsync  buffer offset count  = 
         Async.FromBeginEnd(buffer, offset, count,
@@ -70,20 +66,20 @@ type Stream with
                             x.EndRead)
 
 type Socket with
-    member x.SendAsync(buffer, offset, count) =
+    member x.AsyncSend(buffer, offset, count) =
         Async.FromBeginEnd(buffer, offset, count,
                             (fun (buffer, offset, count, callback, state) -> x.BeginSend(buffer, offset, count, SocketFlags.None, callback, state)),
                             x.EndSend)
 
-    member x.SendChunksAsync(buffer, offset, count, chunk_size) =
+    member x.AsyncSendChunks(buffer, offset, count, chunk_size) =
         async {
             let sent = ref 0
             while !sent < count do
                 if count - !sent > chunk_size then
-                    let! x = x.SendAsync(buffer, offset + !sent, chunk_size)
+                    let! x = x.AsyncSend(buffer, offset + !sent, chunk_size)
                     sent := !sent + x
                 else
-                    let! x = x.SendAsync(buffer, offset + !sent, count - !sent)
+                    let! x = x.AsyncSend(buffer, offset + !sent, count - !sent)
                     sent := !sent + x
         }
                    
@@ -98,20 +94,21 @@ type Socket with
                 sent := !sent + x
 
 type MemoryStream with
-    member x.CopyToAsync (stream : Stream) = 
+    member x.AsyncCopyTo (stream : Stream) = 
         async { 
-            do! stream.WriteAsync (x.GetBuffer()) (int x.Position) (int x.Length)
+            do! stream.AsyncWrite(x.GetBuffer(), int x.Position, int x.Length)
         }           
  
 
 
-let SendSocketAsync (proto : Message) (value : bytes) (s : Socket) =
+let AsyncSendSocket (proto : Message) (value : bytes) (s : Socket) =
     async {
         
-        // calculate hmac
-        use ms = new MemoryStream()
-        Serializer.Serialize(ms, proto.Command)
-        proto.Hmac <- calculateHmac SECRET (ms.GetBuffer()) 0 (int ms.Length)
+        if proto.Hmac = null then
+            // calculate hmac
+            use ms = new MemoryStream()
+            Serializer.Serialize(ms, proto.Command)
+            proto.Hmac <- calculateHmac SECRET (ms.GetBuffer()) 0 (int ms.Length)
 
         use ms = new MemoryStream()
         ms.Seek(9L, SeekOrigin.Begin) |> ignore
@@ -128,44 +125,12 @@ let SendSocketAsync (proto : Message) (value : bytes) (s : Socket) =
                      ms.Write(ln, 0, 4) 
         ms.Seek(0L, SeekOrigin.Begin) |> ignore // move to start
                      
-        do! s.SendAsync(ms.GetBuffer(), int ms.Position, int ms.Length) |> Async.Ignore
- 
-        let w = System.Diagnostics.Stopwatch.StartNew()
+        do! s.AsyncSend(ms.GetBuffer(), int ms.Position, int ms.Length) |> Async.Ignore
 
         match value with
         | null -> ()
-        | buffer -> do! s.SendAsync(buffer, 0, buffer.Length) |> Async.Ignore // Send buffered value
-
-        Log.debug "Sent Value Check! %i ms" w.ElapsedMilliseconds 
+        | buffer -> do! s.AsyncSend(buffer, 0, buffer.Length) |> Async.Ignore // Send buffered value
     }  
 
-let SendAsync (proto : Message) (value : bytes) (client : KineticClient) =
-    async {
-        // calculate hmac
-        use ms = new MemoryStream()
-        Serializer.Serialize(ms, proto.Command)
-        proto.Hmac <- calculateHmac SECRET (ms.GetBuffer()) 0 (int ms.Length)
-       
-        use ms = new MemoryStream()
-        ms.Seek(9L, SeekOrigin.Begin) |> ignore
-        Serializer.Serialize(ms, proto)
-
-        // write header on stream
-        ms.Seek(0L, SeekOrigin.Begin) |> ignore
-        ms.WriteByte(70uy) // Magic Number = 70 (byte) 
-        let ln = bigEndian <| int (ms.Length - 9L)
-        ms.Write(ln, 0, 4) // Proto length (int32)
-        match value with // Value length (int32)
-        | null -> () // nothing to encode, null is 0 bytes that encodes to 00 00 00 00
-        | buffer ->  let ln = bigEndian (buffer.Length)
-                     ms.Write(ln, 0, 4) 
-        ms.Seek(0L, SeekOrigin.Begin) |> ignore // move to start
-                     
-        let ns = client.GetStream() // socket stream
-
-        do! ms.CopyToAsync ns // Send header and proto
-
-        match value with
-        | null -> ()
-        | buffer -> do! ns.WriteAsync buffer 0 buffer.Length // Send buffered value
-    }
+let AsyncSend proto value (client : KineticClient) =
+    AsyncSendSocket proto value client.Client

@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Kinetic</RootNamespace>
     <AssemblyName>Kinetic</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.3.0.0</TargetFSharpCoreVersion>
     <Name>Kinetic</Name>
     <TargetFrameworkProfile />
@@ -21,7 +21,7 @@
     <OutputPath>..\..\bin</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>..\..\bin\Kinetic.xml</DocumentationFile>
+    <DocumentationFile>..\..\bin\Kinetic.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>

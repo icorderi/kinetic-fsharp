@@ -1,13 +1,15 @@
-﻿namespace Seagate.Kinetic
+﻿namespace Kinetic
 
 open System.Net.Sockets
-open Seagate.Kinetic.Proto
-open Seagate.Kinetic.Network
-open Seagate.Kinetic.Model
-open Seagate.Kinetic.Model.Builders
+open Kinetic.Proto
+open Kinetic.Network
+open Kinetic.Model
+open Kinetic.Model.Builders
             
 type ClientPool(clients) = 
-    
+          
+    let log = new Log.Logger("ClientPool")
+
     let mutable running = false
 
     let pendingLimit = 40 // TODO change to property
@@ -27,7 +29,7 @@ type ClientPool(clients) =
     let sender = async {
                     while running do
                         if !pendingReplies >= pendingLimit then
-                            Log.warn "Reached pending limit (Queued=%i, Pending=%i)" queuedCommands.Count !pendingReplies
+                            log.warn "Reached pending limit (Queued=%i, Pending=%i)" queuedCommands.Count !pendingReplies
 
                         while !pendingReplies > pendingLimit do
                             do! Async.Sleep 0
@@ -36,8 +38,8 @@ type ClientPool(clients) =
 
                         let c = scheduler clients
 
-                        if Log.isEnabled Level.Debug then
-                            Log.debug "Pool transmitting to %s:%i (Queued=%i, Pending=%i)" c.Host c.Port queuedCommands.Count !pendingReplies
+                        if log.isEnabled Log.Level.Debug then
+                            log.debug "Pool transmitting to %s:%i (Queued=%i, Pending=%i)" c.Host c.Port queuedCommands.Count !pendingReplies
 
                         System.Threading.Interlocked.Increment pendingReplies |> ignore
                         let! cp = if timeout.IsSome then c.SendAsync(cmd, timeout.Value)
@@ -46,7 +48,7 @@ type ClientPool(clients) =
                         async {
                             let! v = cp.GetAsync()
                             System.Threading.Interlocked.Decrement pendingReplies |> ignore
-                            if Log.isEnabled Level.Debug then
+                            if Log.isEnabled Log.Level.Debug then
                                 Log.debug "Received response from %s:%i, routing to pool promise." c.Host c.Port
                             p.Set v
                         } |> Async.Start
@@ -73,7 +75,7 @@ type ClientPool(clients) =
     member this.SendAsync (command: Command, ?timeout) =
         async {            
             if queuedCommands.Count >= 40 then
-                Log.warn "Reached queue limit (Queued=%i, Pending=%i)" queuedCommands.Count !pendingReplies
+                log.warn "Reached queue limit (Queued=%i, Pending=%i)" queuedCommands.Count !pendingReplies
 
             let p = Promise()
 
