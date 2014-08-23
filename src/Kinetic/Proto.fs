@@ -5,27 +5,11 @@ open System.Collections.Generic
 
 type bytes = byte array
 
-
-[<ProtoContract>]
-type Property() = 
-    ///prop name
-    [<ProtoMember(1, IsRequired=true)>]
-    member val Name : string = null with get,set
-
-    ///prop value
-    [<ProtoMember(2)>]
-    member val Value : string = null with get,set
-
-
 /// operation code
 type MessageType =
-    /// NOT IN THE PROTO
-    | NONE = 0
-    /// get operation
+    | INVALID_MESSAGE_TYPE = -1
     | GET = 2 
-    /// get response
     | GET_RESPONSE = 1
-    /// put operation 
     | PUT = 4 
     | PUT_RESPONSE = 3
     | DELETE = 6
@@ -36,26 +20,22 @@ type MessageType =
     | GETPREVIOUS_RESPONSE = 9
     | GETKEYRANGE = 12
     | GETKEYRANGE_RESPONSE = 11
+    // 13 and 14 are reserved, do not use
     | GETVERSION = 16
     | GETVERSION_RESPONSE = 15
-    | STEALER = 18
-    | STEALER_RESPONSE = 17
-    | DONOR = 20
-    | DONOR_RESPONSE = 19
+    // 17, 18, 19, and 20 are reserved, do not use
     | SETUP = 22
     | SETUP_RESPONSE = 21
     | GETLOG = 24
     | GETLOG_RESPONSE = 23
     | SECURITY = 26
     | SECURITY_RESPONSE = 25
-
-    /// peer to peer push operation
     | PEER2PEERPUSH = 28
-    | PEER2PEERPUSH_RESPONSE = 27
-
+    | PEER2PEERPUSH_RESPONSE = 27   
     | NOOP = 30
     | NOOP_RESPONSE = 29
-
+    | FLUSHALLDATA = 32
+    | FLUSHALLDATA_RESPONSE = 31
 
 [<ProtoContract>]
 [<AllowNullLiteral>]
@@ -90,7 +70,7 @@ type Header() =
 
     ///operation code - put/get/delete/GetLog, etc.
     [<ProtoMember(7)>]
-    member val MessageType : MessageType = MessageType.NONE with get,set
+    member val MessageType : MessageType = MessageType.INVALID_MESSAGE_TYPE with get,set
 
     /// Request timeout (in ms). This is the amount of time that this request should take. If this timeout
     /// is triggered, there are three possible results that can be returned.
@@ -101,24 +81,20 @@ type Header() =
     [<ProtoMember(9)>]
     member val Timeout : int64 = 0L with get,set
 
-    /// fail fast. Requests will not attempt multi revolution recoveries even if the timeout has not occurred.
+    /// If true, requests will not attempt multi revolution recoveries even if the timeout has not occurred.
     /// In this case the result will be DATA_ERROR. To have the drive exhaust all possible error recovery, leave
     /// this field off or set to false, and make sure that the timeout is set to be longer than any possible queue
     /// time and error recovery time. On a disk drive, the maximum error recovery time could be seconds.
     /// Once all possible data recovery operations are complete and have not succeeded, PERM_DATA_ERROR will be
     /// returned.
     [<ProtoMember(10)>]
-    member val FailFast : bool = false with get,set
+    member val EarlyExit : bool = false with get,set
 
     /// A hint that this request is part of a background scan, this is a hint that can allow the drive
     /// to do it's background read process on this record. This allows the drive not to do it's own
     /// background scan.
     [<ProtoMember(11)>]
     member val BackgroundScan : bool = false with get,set
-
-    ///message properties (reserved for future use)
-    [<ProtoMember(8)>]
-    member val Properties : List<Property> = new List<Property>() with get,set
 
 
 type Synchronization =
@@ -127,12 +103,12 @@ type Synchronization =
     | WRITETHROUGH = 1
     /// Asynchronouse write
     | WRITEBACK = 2
+    /// Wait for everything 
     | FLUSH = 3
 
 
 type Algorithm =
-    /// NOT IN THE PROTO!
-    | NONE = 0
+    | INVALID_ALGORITHM = -1
     /// see NIST
     | SHA1 = 1 
     /// see NIST
@@ -180,7 +156,7 @@ type KeyValue() =
     /// then  a positive number is used and the drive has no idea what the key is. See the discussion of
     /// encrypted key/value store.(See security document).
     [<ProtoMember(6)>]
-    member val Algorithm : Algorithm = Algorithm.NONE with get,set
+    member val Algorithm : Algorithm = Algorithm.INVALID_ALGORITHM with get,set
 
     /// for read operations, this will get all the information about the value except for the
     /// value itself. This is valuable for getting the integrity field or the version without also
@@ -228,38 +204,39 @@ type Security() = class end
 [<AllowNullLiteral>]
 type Body() = 
 
-    ///key/value op
+    /// key/value operations
     [<ProtoMember(1)>]
     member val KeyValue : KeyValue = null with get,set
    
-    ///range operation
+    /// range operations
     [<ProtoMember(2)>]
     member val Range : Range = null with get,set
 
-    ///set up opeartion
+    /// set up opeartions
     [<ProtoMember(3)>]
     member val Setup : Setup = null with get,set
    
-    /// EXPERIMENTAL!
-    ///
-    /// The following is incomplete and evolving. Implement at your own risk.
-    ///
-    /// Peer to Peer operations.
+    /// Peer to Peer operations
     [<ProtoMember(4)>]
     member val P2POperation : P2POperation = null with get,set
 
-    ///GetLog
+    /// Log operations
     [<ProtoMember(6)>]
     member val GetLog : GetLog = null with get,set
 
-    ///set up security
+    /// Security operations
     [<ProtoMember(7)>]
     member val Security : Security = null with get,set
 
 
 //enum of status code
 type StatusCode = 
+    /// Don't ask...
+    | INVALID_STATUS_CODE = -1
+    /// For a P2P operation, there was a reason the list was incomplete. This is for items
+    /// that were not attempted.
     | NOT_ATTEMPTED = 0
+    /// We have a winner!
     | SUCCESS = 1
     | HMAC_FAILURE = 2
     | NOT_AUTHORIZED = 3
@@ -296,6 +273,16 @@ type StatusCode =
     /// In the set security, an HmacAlgorithm was specified as Unknown or there is a protocol
     /// version mis-match
     | NO_SUCH_HMAC_ALGORITHM = 15
+
+    /// The request is not valid. Subsequent attempts with the same request will return the same code.
+    /// Examples: GET does not specify keyValue message, GETKEYRANGE operation does not specify startKey, etc
+    | INVALID_REQUEST = 16
+
+    /// For P2P Requests, the operation was executed successfully but some nested operations
+    /// did not succeed. This indicates that callers should review the status of nested operations.
+    /// This status should only be used in the Command > Status, not in the Status messages
+    /// of nested P2POperations
+    | NESTED_OPERATION_ERRORS = 17
   
        
 /// operation status
@@ -319,19 +306,24 @@ type Status() =
 [<ProtoContract>]
 [<AllowNullLiteral>]
 type Command() =
+
     [<ProtoMember(1)>]
     member val Header : Header = null with get,set
+
     [<ProtoMember(2)>]
     member val Body : Body = null with get,set
+
     [<ProtoMember(3)>]
     member val Status : Status = null with get,set
 
 
 [<ProtoContract>]
 type Message() =
+
     [<ProtoMember(1)>]
     member val Command : Command = null with get,set
-    [<ProtoMember(2)>]
-    member val Value : bytes = null with get,set
+
+    // 2 is reserved, do not use
+
     [<ProtoMember(3)>]
     member val Hmac : bytes = null with get,set

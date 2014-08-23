@@ -25,7 +25,7 @@ type Promise<'T>()=
        signal.WaitOne() |> ignore
        value.Value 
 
-    member x.GetAsync () = 
+    member x.AsyncGet () = 
         async {
             do! Async.AwaitWaitHandle signal |> Async.Ignore
             return value.Value 
@@ -124,9 +124,9 @@ type Client(host:string, port:int) as this =
 
     member val ClusterVersion = 0L with get, set
 
-    member this.Connect() = this.ConnectAsync() |> Async.RunSynchronously
+    member this.Connect() = this.AsyncConnect() |> Async.RunSynchronously
 
-    member this.ConnectAsync() = Async.FromBeginEnd(this.Host, this.Port,
+    member this.AsyncConnect() = Async.FromBeginEnd(this.Host, this.Port,
                                    (fun (host:string, port:int, callback, state) -> tcp.BeginConnect(host, port, callback, state)),
                                    (fun iar -> 
                                         tcp.EndConnect(iar)
@@ -141,8 +141,8 @@ type Client(host:string, port:int) as this =
 
     member this.Send (command, ?timeout) = 
         match timeout with
-        | Some t -> this.SendAsync (command, t) |> Async.RunSynchronously
-        | _ -> this.SendAsync command |> Async.RunSynchronously
+        | Some t -> this.AsyncSend (command, t) |> Async.RunSynchronously
+        | _ -> this.AsyncSend command |> Async.RunSynchronously
 
     member this.SendAndReceive (command, ?timeout) = 
         let p : Promise<Response> = match timeout with
@@ -150,7 +150,7 @@ type Client(host:string, port:int) as this =
                                     | _ -> this.Send command
         p.Get()
                 
-    member this.SendAsync (command: Command, ?timeout) =
+    member this.AsyncSend (command: Command, ?timeout) =
         async {   
             let msg = Message() 
                       |> addHeader
@@ -183,15 +183,15 @@ type Client(host:string, port:int) as this =
     /// Applies SendAsync to right hand side of operator and calls GetAsync on promise
     static member (<<+) (c : Client, rs) = 
         async {
-            let! p = c.SendAsync rs
-            return! p.GetAsync()
+            let! p = c.AsyncSend rs
+            return! p.AsyncGet()
         }
 
     /// Applies SendAsync to right hand side of operator
-    static member (<<-) (c : Client, rs) = c.SendAsync rs
+    static member (<<-) (c : Client, rs) = c.AsyncSend rs
 
     /// Applies SendAsync to right hand side of operator and discards result
-    static member (<--) (c : Client, rs) = c.SendAsync rs |> Async.Ignore
+    static member (<--) (c : Client, rs) = c.AsyncSend rs |> Async.Ignore
 
 
 

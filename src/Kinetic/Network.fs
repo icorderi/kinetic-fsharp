@@ -28,39 +28,39 @@ let calculateHmac secret data offset length =
     hmac.TransformFinalBlock(data, offset, length) |> ignore
     hmac.Hash
 
-let rec safeReadAsync (stream : Stream) buffer offset length =
+let rec asyncSafeRead (stream : Stream) buffer offset length =
     async {
         // printfn "Reading %A bytes from position %A" length offset
         let! read = stream.AsyncRead(buffer, offset, length)
         if read = 0 then failwith "End of stream reached."
         if read < length then
-            do! safeReadAsync stream buffer (offset + read) (length - read)
+            do! asyncSafeRead stream buffer (offset + read) (length - read)
     }
 
 let AsyncReceive (client : KineticClient) : Async<Message * bytes option> =
     async {
         let ns = client.GetStream()
         let buffer = Array.zeroCreate 9
-        do! safeReadAsync ns buffer 0 9
+        do! asyncSafeRead ns buffer 0 9
         if buffer.[0] <> 70uy then failwith "Invalid magic number received!"
         System.Array.Reverse buffer
         let valueln = System.BitConverter.ToInt32(buffer, 0)
         let protoln = System.BitConverter.ToInt32(buffer, 4)
         // printfn "Magic=%A, Proto=%A bytes, Value=%A bytes" buffer.[8] protoln valueln // index 8, its reversed
         let buffer = Array.zeroCreate protoln
-        do! safeReadAsync ns buffer 0 protoln
+        do! asyncSafeRead ns buffer 0 protoln
         use ms = new MemoryStream(buffer)
         let resp = Serializer.Deserialize(ms)
         if valueln > 0 then 
             let buffer = Array.zeroCreate valueln
-            do! safeReadAsync ns buffer 0 valueln
+            do! asyncSafeRead ns buffer 0 valueln
             return (resp, Some buffer)
         else return (resp, None)
     }
 
 type Stream with
 
-    member x.ReadAsync  buffer offset count  = 
+    member x.AsyncRead  buffer offset count  = 
         Async.FromBeginEnd(buffer, offset, count,
                             (fun (buffer, offset, count, callback, state) -> x.BeginRead(buffer, offset, count, callback, state)),
                             x.EndRead)

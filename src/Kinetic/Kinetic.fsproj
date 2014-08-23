@@ -67,18 +67,14 @@
   </Target>
   -->
   <ItemGroup>
-    <Compile Include="Log.fs" />
     <Compile Include="BlockingQueueAgent.fs">
     </Compile>
-    <Compile Include="AccumulatorAgent.fs" />
-    <Compile Include="CountdownAgent.fs" />
-    <Compile Include="SemaphoreAgent.fs" />
+    <Compile Include="Log.fs" />
     <Compile Include="Proto.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="Builders.fs" />
     <Compile Include="Network.fs" />
     <Compile Include="Client.fs" />
-    <Compile Include="ClientPool.fs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
