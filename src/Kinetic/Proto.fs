@@ -36,6 +36,8 @@ type MessageType =
     | NOOP_RESPONSE = 29
     | FLUSHALLDATA = 32
     | FLUSHALLDATA_RESPONSE = 31
+    | PINOP = 36
+    | PINOP_RESPONSE = 35
 
 [<ProtoContract>]
 [<AllowNullLiteral>]
@@ -441,6 +443,51 @@ type GetLog() =
 type Security() = class end
 
 
+type PinOperationType = 
+    | INVALID_PINOP = -1
+
+    /// The pin will unlock the device
+    | UNLOCK_PINOP = 1
+
+    /// This will lock the device. This includes all
+    /// configuration and user data. This operation is
+    /// secure from even given physical access and
+    /// disassembly of the device.
+    | LOCK_PINOP = 2
+
+    /// Both erase operations will return
+    /// the device to an as manufactured state removing all
+    /// user data and configuration settings.
+
+    /// Erase the device. This may be secure
+    /// or not. The implication is that it may be faster
+    /// than the secure operation.
+    /// Will return
+    /// the device to an as manufactured state removing all
+    /// user data and configuration settings.
+    | ERASE_PINOP = 3
+
+    /// Erase the device in a way that will
+    /// physical access and disassembly of the device
+    /// will not.
+    /// Will return
+    /// the device to an as manufactured state removing all
+    /// user data and configuration settings.
+    | SECURE_ERASE_PINOP = 4
+
+
+[<ProtoContract>]
+[<AllowNullLiteral>]
+type PinOperation() = 
+  
+    /// Pin Operations are used for special commands that are valid when the device
+    /// is locked or to be locked. These are unlock, lock and erase.
+    /// This must come over the TLS connection to protect the confidentiality and
+    /// integrity. This operations must be used with PinAuth.    
+    [<ProtoMember(1)>]
+    member val PinOperationType = PinOperationType.INVALID_PINOP with get,set
+
+
 [<ProtoContract>]
 [<AllowNullLiteral>]
 type Body() = 
@@ -468,6 +515,10 @@ type Body() =
     /// Security operations
     [<ProtoMember(7)>]
     member val Security : Security = null with get,set
+
+    /// Perform Pin-based operations
+    [<ProtoMember(8)>]
+    member val PinOperation : PinOperation = null with get,set
 
 
 //enum of status code

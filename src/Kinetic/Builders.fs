@@ -55,6 +55,11 @@ let buildNoop (cmd : Kinetic.Proto.Command) =
     cmd.Header.MessageType <- MessageType.NOOP
     cmd // return the modified message
 
+let buildPinOperation (t : PinOperationType) (cmd : Kinetic.Proto.Command) = 
+    cmd.Header.MessageType <- MessageType.PINOP
+    cmd.Body <- Body(PinOperation = PinOperation())
+    cmd.Body.PinOperation.PinOperationType <- t
+    cmd
 
 type Command with
     member x.Build =
@@ -64,5 +69,9 @@ type Command with
         | Get c -> c.Build
         | Delete c -> c.Build
         | GetLog c -> c.Build
+        | Erase -> buildPinOperation PinOperationType.ERASE_PINOP
+        | SecureErase -> buildPinOperation PinOperationType.SECURE_ERASE_PINOP
+        | Lock -> buildPinOperation PinOperationType.LOCK_PINOP
+        | Unlock -> buildPinOperation PinOperationType.UNLOCK_PINOP
 
  

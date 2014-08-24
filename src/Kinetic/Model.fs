@@ -88,6 +88,10 @@ type Command =
     | Put of Put
     | Delete of Delete
     | GetLog of GetLog
+    | Erase
+    | SecureErase
+    | Lock
+    | Unlock
 
     member x.Value =
         match x with
