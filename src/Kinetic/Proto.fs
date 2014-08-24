@@ -5,7 +5,7 @@ open System.Collections.Generic
 
 type bytes = byte array
 
-/// operation code
+/// Operation code
 type MessageType =
     | INVALID_MESSAGE_TYPE = -1
     | GET = 2 
@@ -47,9 +47,7 @@ type Header() =
     [<ProtoMember(1)>]
     member val ClusterVersion : int64 = 0L with get,set
 
-    /// The "user" identifies the user and the key and algorithm to be used for hmac. (See security document).
-    [<ProtoMember(2)>]
-    member val Identity : int64 = 0L with get,set
+    // 2 is reserved, do not use
 
     /// A unique number for this connection between the source and target. On the first request
     /// to the drive, this should be the time of day in seconds since 1970. The drive can change this
@@ -70,7 +68,7 @@ type Header() =
 
     ///operation code - put/get/delete/GetLog, etc.
     [<ProtoMember(7)>]
-    member val MessageType : MessageType = MessageType.INVALID_MESSAGE_TYPE with get,set
+    member val MessageType = MessageType.INVALID_MESSAGE_TYPE with get,set
 
     /// Request timeout (in ms). This is the amount of time that this request should take. If this timeout
     /// is triggered, there are three possible results that can be returned.
@@ -156,7 +154,7 @@ type KeyValue() =
     /// then  a positive number is used and the drive has no idea what the key is. See the discussion of
     /// encrypted key/value store.(See security document).
     [<ProtoMember(6)>]
-    member val Algorithm : Algorithm = Algorithm.INVALID_ALGORITHM with get,set
+    member val Algorithm = Algorithm.INVALID_ALGORITHM with get,set
 
     /// for read operations, this will get all the information about the value except for the
     /// value itself. This is valuable for getting the integrity field or the version without also
@@ -172,7 +170,7 @@ type KeyValue() =
     ///        specifies FLUSH is written last and then returned. All ASYNC writes that have received ending
     ///        status will be guaranteed to be written before the FLUSH operation is returned completed.
     [<ProtoMember(9)>]
-    member val Synchronization : Synchronization = Synchronization.INVALID_SYNCHRONIZATION with get,set
+    member val Synchronization = Synchronization.INVALID_SYNCHRONIZATION with get,set
 
 
 [<ProtoContract>]
@@ -338,7 +336,7 @@ type Configuration() =
 type Statistics() =
 
     [<ProtoMember(1)>]
-    member val MessageType : MessageType = MessageType.INVALID_MESSAGE_TYPE with get,set
+    member val MessageType = MessageType.INVALID_MESSAGE_TYPE with get,set
 
     // 2 and 3 are reserved, do not use
 
@@ -535,7 +533,7 @@ type Status() =
   
     /// status code
     [<ProtoMember(1)>]
-    member val Code : StatusCode = StatusCode.NOT_ATTEMPTED with get,set
+    member val Code = StatusCode.NOT_ATTEMPTED with get,set
 
     /// status message
     [<ProtoMember(2)>] 
@@ -560,13 +558,72 @@ type Command() =
     member val Status : Status = null with get,set
 
 
+/// The Message Type determines how the the message is to be processed.
+type AuthenticationType =
+    /// If the message type is unknown, close the connection
+    | INVALID_AUTH_TYPE = -1
+
+    /// This is for normal traffic. Check the HMAC of the command and
+    /// if correct, process the command.
+    | HMACAUTH = 1
+
+    /// device unlock and ISE command. These must come over the TLS connection.
+    /// If they do not, close the connection. If it is over
+    /// the TLS connection, execute the pin operation.
+    | PINAUTH = 2
+
+    /// In the event that the device is going to close the connection, an
+    /// unsolicited status will be returned first.
+    | UNSOLICITEDSTATUS = 3
+
+
+/// This is for normal message to the device
+/// and for responses. These are allowed once the
+/// device is unlocked. The HMAC provides for
+/// authenticity, Integrity and to enforce roles.
+[<ProtoContract>]
+[<AllowNullLiteral>]
+type HmacAuthentication() =
+
+    /// The "identity" identifies the requester and the key and algorithm to
+    /// be used for hmac.
+    [<ProtoMember(1)>]
+    member val Identity : int64 = 0L with get,set
+
+    [<ProtoMember(2)>]
+    member val Hmac : bytes = null with get,set
+
+
+/// Pin based authentication for Pin operations.
+[<ProtoContract>]
+[<AllowNullLiteral>]
+type PinAuthentication() =
+       
+    /// The pin necessary to make the operations valid
+    [<ProtoMember(1)>]
+    member val Pin : bytes = null with get,set
+
+
 [<ProtoContract>]
 type Message() =
 
-    [<ProtoMember(1)>]
-    member val Command : Command = null with get,set
+    // 1-3 are reserved, do not use
 
-    // 2 is reserved, do not use
+    /// Every message must be one of the following types.
+    [<ProtoMember(4)>]
+    member val AuthenticationType = AuthenticationType.INVALID_AUTH_TYPE with get,set
+  
+    /// Normal messages
+    [<ProtoMember(5)>]
+    member val HmacAuthentication : HmacAuthentication = null with get,set
 
-    [<ProtoMember(3)>]
-    member val Hmac : bytes = null with get,set
+    /// For Pin based operations. These include device unlock and
+    /// device erase
+    [<ProtoMember(6)>]
+    member val PinAuthentication : PinAuthentication = null with get,set
+
+    /// The embedded message providing the request (for HMACauth) and
+    /// the response (for all auth types).
+    [<ProtoMember(7)>]
+    member val CommandBytes : bytes = null with get,set
+

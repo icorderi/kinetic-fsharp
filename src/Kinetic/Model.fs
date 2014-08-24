@@ -78,6 +78,7 @@ type Delete = {
 type GetLog = { 
     Types : List<LogType> 
     }
+
 // -------------------------------------------------------------------
 
 /// Union type all commands
@@ -98,7 +99,7 @@ type Command =
 // -------------------------------------------------------------------
 
 type Response =
-    | Success of Message * bytes option
+    | Success of Kinetic.Proto.Command * bytes option
     | Cancelled
     | Error of exn   
 

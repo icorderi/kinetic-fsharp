@@ -99,17 +99,10 @@ type MemoryStream with
             do! stream.AsyncWrite(x.GetBuffer(), int x.Position, int x.Length)
         }           
  
-
-
+        
 let AsyncSendSocket (proto : Message) (value : bytes) (s : Socket) =
     async {
         
-        if proto.Hmac = null then
-            // calculate hmac
-            use ms = new MemoryStream()
-            Serializer.Serialize(ms, proto.Command)
-            proto.Hmac <- calculateHmac SECRET (ms.GetBuffer()) 0 (int ms.Length)
-
         use ms = new MemoryStream()
         ms.Seek(9L, SeekOrigin.Begin) |> ignore
         Serializer.Serialize(ms, proto)
@@ -131,6 +124,7 @@ let AsyncSendSocket (proto : Message) (value : bytes) (s : Socket) =
         | null -> ()
         | buffer -> do! s.AsyncSend(buffer, 0, buffer.Length) |> Async.Ignore // Send buffered value
     }  
+
 
 let AsyncSend proto value (client : KineticClient) =
     AsyncSendSocket proto value client.Client

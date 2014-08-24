@@ -5,22 +5,22 @@ open Kinetic.Proto
 open Kinetic.Model
 
 type Get with 
-    member x.Build (msg : Message) = 
-        msg.Command.Header.MessageType <- MessageType.GET
-        msg.Command.Body <- Body(KeyValue = KeyValue())
+    member x.Build (cmd : Kinetic.Proto.Command) = 
+        cmd.Header.MessageType <- MessageType.GET
+        cmd.Body <- Body(KeyValue = KeyValue())
 
-        let y = msg.Command.Body.KeyValue       
+        let y = cmd.Body.KeyValue       
         y.Key <- x.Key.Consume()
         y.DbVersion <- x.Version.Consume()
         y.MetadataOnly <- x.MetadataOnly
-        msg // return the modified message
+        cmd // return the modified message
 
 type Put with 
-    member x.Build (msg : Message) = 
-        msg.Command.Header.MessageType <- MessageType.PUT
-        msg.Command.Body <- Body(KeyValue = KeyValue())
+    member x.Build (cmd : Kinetic.Proto.Command) = 
+        cmd.Header.MessageType <- MessageType.PUT
+        cmd.Body <- Body(KeyValue = KeyValue())
 
-        let y = msg.Command.Body.KeyValue       
+        let y = cmd.Body.KeyValue       
         y.Key <- x.Key.Consume()
         y.DbVersion <- x.CurrentVersion.Consume()
         y.NewVersion <- x.NewVersion.Consume()
@@ -28,32 +28,33 @@ type Put with
         y.Synchronization <- x.Synchronization
         y.Algorithm <- x.Algorithm
         y.Tag <- x.Tag.Consume()
-        msg // return the modified message
+        cmd // return the modified message
 
 type Delete with 
-    member x.Build (msg : Message) = 
-        msg.Command.Header.MessageType <- MessageType.DELETE
-        msg.Command.Body <- Body(KeyValue = KeyValue())
+    member x.Build (cmd : Kinetic.Proto.Command) = 
+        cmd.Header.MessageType <- MessageType.DELETE
+        cmd.Body <- Body(KeyValue = KeyValue())
 
-        let y = msg.Command.Body.KeyValue       
+        let y = cmd.Body.KeyValue       
         y.Key <- x.Key.Consume()
         y.DbVersion <- x.Version.Consume()
         y.Force <- x.Force
         y.Synchronization <- x.Synchronization
-        msg // return the modified message
+        cmd // return the modified message
 
 type GetLog with 
-    member x.Build (msg : Message) = 
-        msg.Command.Header.MessageType <- MessageType.GETLOG
-        msg.Command.Body <- Body(GetLog = Kinetic.Proto.GetLog())
+    member x.Build (cmd : Kinetic.Proto.Command) = 
+        cmd.Header.MessageType <- MessageType.GETLOG
+        cmd.Body <- Body(GetLog = Kinetic.Proto.GetLog())
 
-        let y = msg.Command.Body.GetLog       
+        let y = cmd.Body.GetLog       
         y.Types.AddRange x.Types
-        msg // return the modified message
+        cmd // return the modified message
 
-let buildNoop (msg : Message) = 
-    msg.Command.Header.MessageType <- MessageType.NOOP
-    msg // return the modified message
+let buildNoop (cmd : Kinetic.Proto.Command) = 
+    cmd.Header.MessageType <- MessageType.NOOP
+    cmd // return the modified message
+
 
 type Command with
     member x.Build =
@@ -63,3 +64,5 @@ type Command with
         | Get c -> c.Build
         | Delete c -> c.Build
         | GetLog c -> c.Build
+
+ 
