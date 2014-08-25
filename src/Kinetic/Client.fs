@@ -86,6 +86,8 @@ type Client(host:string, port:int) as this =
 
     let pendingReplies = new System.Collections.Concurrent.ConcurrentDictionary<int64,Promise<Response>>()
 
+    let unsolicitedStatus = new Event<_>()
+
     let sender = async {
                     while running do
 
@@ -123,10 +125,9 @@ type Client(host:string, port:int) as this =
                                 if hmac <> resp.HmacAuthentication.Hmac then
                                     log.error "HMAC doesn't match" // TODO: Boom, invalid HMAC
                             | Hmac (identity, _) -> log.error "Identities don't match" // TODO: Boom, identities dont match 
-                        | AuthenticationType.PINAUTH -> () // Do nothing
-                        | AuthenticationType.INVALID_AUTH_TYPE -> log.error "Ehh.. Invalid authentication status received."
-                        | AuthenticationType.UNSOLICITEDSTATUS -> log.warn "Unsolicited status received." // TODO
-                        | _ -> () // Annoying warning for unexisting enum values... 
+                        | AuthenticationType.INVALID_AUTH_TYPE -> 
+                            log.error "Ehh.. Invalid authentication status received."
+                        | _ -> () // Nothing to check for the rest
 
                         let ms = new MemoryStream(resp.CommandBytes)
                         let cmd : Kinetic.Proto.Command = ProtoBuf.Serializer.Deserialize(ms)
@@ -134,15 +135,19 @@ type Client(host:string, port:int) as this =
                         if cmd.Header.ConnectionID <> this.ConnectionID then
                             log.error "TODO: ConnectionId doesn't match, throw exception"
 
-                        let p = pendingReplies.[cmd.Header.AckSequence]
-                        pendingReplies.TryRemove(cmd.Header.AckSequence) |> ignore
+                        match resp.AuthenticationType with
+                        | AuthenticationType.UNSOLICITEDSTATUS ->
+                            unsolicitedStatus.Trigger cmd.Status
+                        | _ ->
+                            let p = pendingReplies.[cmd.Header.AckSequence]
+                            pendingReplies.TryRemove(cmd.Header.AckSequence) |> ignore
 
-                        if log.isEnabled Log.Level.Debug then
-                            log.debug "Received Seq=%i on %s:%i (Queued=%i, Pending=%i)" cmd.Header.AckSequence host port queuedCommands.Count pendingReplies.Count
-                                                               
-                        match cmd.Status.Code with
-                        | StatusCode.SUCCESS -> p.Set <| Success (cmd, value)
-                        | _ -> p.Set <| Error (RemoteException (cmd.Status)) 
+                            if log.isEnabled Log.Level.Debug then
+                                log.debug "Received Seq=%i on %s:%i (Queued=%i, Pending=%i)" cmd.Header.AckSequence host port queuedCommands.Count pendingReplies.Count
+                                                                   
+                            match cmd.Status.Code with
+                            | StatusCode.SUCCESS -> p.Set <| Success (cmd, value)
+                            | _ -> p.Set <| Error (RemoteException (cmd.Status)) 
                     } 
 
     let handshake() = 
@@ -166,6 +171,9 @@ type Client(host:string, port:int) as this =
 
             // TODO : pull the rest of the info
         }
+                
+    [<CLIEvent>]
+    member this.UnsolicitedStatus = unsolicitedStatus.Publish
 
     member this.QueueCount with get() = queuedCommands.Count
          
