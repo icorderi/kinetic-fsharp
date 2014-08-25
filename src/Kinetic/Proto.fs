@@ -409,34 +409,34 @@ type Statistics() =
 type DeviceLimits() =
 
     [<ProtoMember(1)>]
-    member val maxKeySize : int = 0 with get,set
+    member val MaxKeySize : int = 0 with get,set
 
     [<ProtoMember(2)>]
-    member val maxValueSize : int = 0 with get,set
+    member val MaxValueSize : int = 0 with get,set
    
     [<ProtoMember(3)>]
-    member val maxVersionSize : int = 0 with get,set
+    member val MaxVersionSize : int = 0 with get,set
 
     [<ProtoMember(4)>]
-    member val maxTagSize : int = 0 with get,set
+    member val MaxTagSize : int = 0 with get,set
 
     [<ProtoMember(5)>]
-    member val maxConnections : int = 0 with get,set
+    member val MaxConnections : int = 0 with get,set
 
     [<ProtoMember(6)>]
-    member val maxOutstandingReadRequests : int = 0 with get,set
+    member val MaxOutstandingReadRequests : int = 0 with get,set
 
     [<ProtoMember(7)>]
-    member val maxOutstandingWriteRequests : int = 0 with get,set
+    member val MaxOutstandingWriteRequests : int = 0 with get,set
 
     [<ProtoMember(8)>]
-    member val maxMessageSize : int = 0 with get,set
+    member val MaxMessageSize : int = 0 with get,set
 
     [<ProtoMember(9)>]
-    member val maxKeyRangeCount : int = 0 with get,set
+    member val MaxKeyRangeCount : int = 0 with get,set
 
     [<ProtoMember(10)>]
-    member val maxIdentityCount : int = 0 with get,set
+    member val MaxIdentityCount : int = 0 with get,set
 
 
 [<ProtoContract>]

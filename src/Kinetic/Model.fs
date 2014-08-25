@@ -54,6 +54,8 @@ type Range = {
 
 exception RemoteException of Status
 
+exception InvalidClusterVersion of string * int64
+
 // -------------------------------------------------------------------
 // Commands
 // -------------------------------------------------------------------

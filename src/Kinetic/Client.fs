@@ -88,6 +88,10 @@ type Client(host:string, port:int) as this =
 
     let unsolicitedStatus = new Event<_>()
 
+    let mutable config = Option.None
+
+    let mutable limits = Option.None
+
     let sender = async {
                     while running do
 
@@ -118,13 +122,17 @@ type Client(host:string, port:int) as this =
                         match resp.AuthenticationType with
                         | AuthenticationType.HMACAUTH -> 
                             match this.Authentication with
-                            | Pin _ -> () // How did this happen?
+                            | Pin _ -> log.warn "Something is wrong, sent HMAC authentication and received PIN response."
                             | Hmac (identity, secret) when resp.HmacAuthentication.Identity = identity -> 
                                 let hmac = calculateHmac (secret.Consume()) resp.CommandBytes 0 (int resp.CommandBytes.Length)
                                 let allEqual = Array.forall2 (fun x y -> x = y)
                                 if hmac <> resp.HmacAuthentication.Hmac then
                                     log.error "HMAC doesn't match" // TODO: Boom, invalid HMAC
                             | Hmac (identity, _) -> log.error "Identities don't match" // TODO: Boom, identities dont match 
+                        | AuthenticationType.PINAUTH ->
+                            match this.Authentication with
+                            | Hmac _ -> log.warn "Something is wrong, sent PIN authentication and received HMAC response."
+                            | Pin _ -> () // this is expected
                         | AuthenticationType.INVALID_AUTH_TYPE -> 
                             log.error "Ehh.. Invalid authentication status received."
                         | _ -> () // Nothing to check for the rest
@@ -154,23 +162,31 @@ type Client(host:string, port:int) as this =
         async {
             let! (resp:Message, value) = AsyncReceive tcp
             if resp.AuthenticationType <> AuthenticationType.UNSOLICITEDSTATUS then 
-                log.error "TODO: Not unsolicited status? throw exception"
+                failwith "Initial handshake response was not an UNSOLICITEDSTATUS." 
             
             let ms = new MemoryStream(resp.CommandBytes)
             let cmd : Kinetic.Proto.Command = ProtoBuf.Serializer.Deserialize(ms)
 
             if cmd.Status.Code <> StatusCode.SUCCESS then
-                log.error "TODO: Connection not accepted, throw exception"
+                raise <| RemoteException (cmd.Status)
 
             connectionID <- cmd.Header.ConnectionID
 
             match this.ClusterVersion with
-            | Some x when x <> cmd.Header.ClusterVersion -> log.error "TODO: cluster mismatch, throw exception"
+            | Some x when x <> cmd.Header.ClusterVersion -> 
+                raise <| InvalidClusterVersion 
+                    (sprintf "Cluster mismatch, client configured as %i but device expected %i." x cmd.Header.ClusterVersion
+                    , cmd.Header.ClusterVersion)
             | Option.None -> this.ClusterVersion <- Some cmd.Header.ClusterVersion
             | _ -> () // all good
 
-            // TODO : pull the rest of the info
+            config <- Some cmd.Body.GetLog.Configuration
+            limits <- Some cmd.Body.GetLog.Limits
         }
+
+    member this.Configuration with get() = config.Value
+
+    member this.Limits with get() = limits.Value
                 
     [<CLIEvent>]
     member this.UnsolicitedStatus = unsolicitedStatus.Publish
