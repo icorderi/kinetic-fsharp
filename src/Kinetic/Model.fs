@@ -92,6 +92,12 @@ type GetLog = {
 
 // -------------------------------------------------------------------
 
+type Parameter =
+    | Timeout of int64
+    | EarlyExit 
+    | Priority of Priority
+    | TimeQuanta of int64
+
 /// Union type all commands
 type Command =
     | Noop
@@ -107,6 +113,8 @@ type Command =
     // Background operations
     | MediaScan of Range
     | MediaOptimize of Range
+    //
+    | WithParams of Command * Parameter list
 
     member x.Value =
         match x with

@@ -80,6 +80,14 @@ let buildBackgroundOperation (t : BackgroundOperationType) (r : Range) (cmd : Ki
     cmd.Body.BackgroundOperation.Range <- r.Build(Kinetic.Proto.Range())
     cmd
 
+let buildParameter (cmd : Kinetic.Proto.Command) (p : Parameter) =
+    match p with
+    | Timeout t -> cmd.Header.Timeout <- t
+    | EarlyExit -> cmd.Header.EarlyExit <- true
+    | Priority l -> cmd.Header.Priority <- l
+    | TimeQuanta tq -> cmd.Header.TimeQuanta <- tq
+    cmd
+
 type Command with
     member x.Build =
         match x with
@@ -88,10 +96,18 @@ type Command with
         | Get c -> c.Build
         | Delete c -> c.Build
         | GetLog c -> c.Build
-        | Erase -> buildPinOperation PinOperationType.ERASE_PINOP
-        | SecureErase -> buildPinOperation PinOperationType.SECURE_ERASE_PINOP
-        | Lock -> buildPinOperation PinOperationType.LOCK_PINOP
-        | Unlock -> buildPinOperation PinOperationType.UNLOCK_PINOP
-        | MediaOptimize r -> buildBackgroundOperation BackgroundOperationType.MEDIAOPTIMIZE r
-        | MediaScan r -> buildBackgroundOperation BackgroundOperationType.MEDIASCAN r
+        | Erase -> 
+            buildPinOperation PinOperationType.ERASE_PINOP
+        | SecureErase -> 
+            buildPinOperation PinOperationType.SECURE_ERASE_PINOP
+        | Lock -> 
+            buildPinOperation PinOperationType.LOCK_PINOP
+        | Unlock -> 
+            buildPinOperation PinOperationType.UNLOCK_PINOP
+        | MediaOptimize r -> 
+            buildBackgroundOperation BackgroundOperationType.MEDIAOPTIMIZE r
+        | MediaScan r -> 
+            buildBackgroundOperation BackgroundOperationType.MEDIASCAN r
+        | WithParams (cmd,prms) -> 
+            fun x -> List.fold buildParameter (cmd.Build(x)) prms 
  

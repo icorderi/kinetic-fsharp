@@ -103,7 +103,7 @@ type Client(host:string, port:int) as this =
                         | Operation (cmd, value, p) ->
                             if log.isEnabled Log.Level.Debug then
                                 log.debug "Transmitting Seq=%i on %s:%i (Queued=%i, Pending=%i)" cmd.Header.Sequence host port queuedCommands.Count pendingReplies.Count
-
+                                                        
                             let msg = cmd |> addHeader |> wrapAuthentication
 
                             pendingReplies.TryAdd(cmd.Header.Sequence,p) |> ignore // TODO make sure it got added instead of ignoring it

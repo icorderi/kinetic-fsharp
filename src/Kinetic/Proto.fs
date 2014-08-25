@@ -2,6 +2,7 @@
 
 open ProtoBuf
 open System.Collections.Generic
+open System.ComponentModel
 
 type bytes = byte array
 
@@ -40,6 +41,15 @@ type MessageType =
     | BACKOP_RESPONSE = 33
     | PINOP = 36
     | PINOP_RESPONSE = 35
+
+
+type Priority =
+    | NORMAL = 5
+    | LOWEST = 1
+    | LOWER = 3
+    | HIGHER = 7
+    | HIGHEST = 9
+   
 
 [<ProtoContract>]
 [<AllowNullLiteral>]
@@ -92,11 +102,22 @@ type Header() =
     [<ProtoMember(10)>]
     member val EarlyExit : bool = false with get,set
 
-    /// A hint that this request is part of a background scan, this is a hint that can allow the drive
-    /// to do it's background read process on this record. This allows the drive not to do it's own
-    /// background scan.
-    [<ProtoMember(11)>]
-    member val BackgroundScan : bool = false with get,set
+    // 11 is reserved
+
+    /// Priority is a simple integer that determines the priority of this
+    /// request. All activity at a higher priority will execute before that
+    /// of lower priority traffic. A higher number is higher priority.
+    [<DefaultValue(Priority.NORMAL)>]
+    [<ProtoMember(12)>]
+    member val Priority = Priority.NORMAL with get,set
+
+    /// A hint of how long a job should run before yielding. Specified in
+    /// miliseconds. A value of 0 indicates that the operation can perform one
+    /// sub operation and then check to see if there are other sub higher
+    /// priority operations. An example of a sub-operation might be a single put
+    /// in a P2P operation, etc.
+    [<ProtoMember(13)>]
+    member val TimeQuanta : int64 = 0L with get,set
 
 
 type Synchronization =
@@ -157,6 +178,7 @@ type KeyValue() =
     /// the algorithm will be negative. If the data protection algorithm is not a standard unkeyed algorithm
     /// then  a positive number is used and the drive has no idea what the key is. See the discussion of
     /// encrypted key/value store.(See security document).
+    [<DefaultValue(Algorithm.INVALID_ALGORITHM)>]
     [<ProtoMember(6)>]
     member val Algorithm = Algorithm.INVALID_ALGORITHM with get,set
 
@@ -173,6 +195,7 @@ type KeyValue() =
     /// FLUSH: All pending information that has not been written is pushed to the disk and the command that
     ///        specifies FLUSH is written last and then returned. All ASYNC writes that have received ending
     ///        status will be guaranteed to be written before the FLUSH operation is returned completed.
+    [<DefaultValue(Synchronization.INVALID_SYNCHRONIZATION)>]
     [<ProtoMember(9)>]
     member val Synchronization = Synchronization.INVALID_SYNCHRONIZATION with get,set
 
