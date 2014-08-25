@@ -211,23 +211,16 @@ type Client(host:string, port:int) as this =
         running <- false
         // TODO when queue's depleted, close socket
 
-    member this.Send (command, ?timeout) = 
-        match timeout with
-        | Some t -> this.AsyncSend (command, t) |> Async.RunSynchronously
-        | _ -> this.AsyncSend command |> Async.RunSynchronously
+    member this.Send command = this.AsyncSend command |> Async.RunSynchronously
 
-    member this.SendAndReceive (command, ?timeout) = 
-        let p : Promise<Response> = match timeout with
-                                    | Some t -> this.Send (command, t)
-                                    | _ -> this.Send command
+    member this.SendAndReceive command = 
+        let p : Promise<Response> = this.Send command
         p.Get()
                 
-    member this.AsyncSend (command: Command, ?timeout) =
+    member this.AsyncSend (command: Command) =
         async {   
             let cmd = Command(Header=Header()) |> command.Build
-
-            if timeout.IsSome then cmd.Header.Timeout <- timeout.Value  
-                      
+                              
             if log.isEnabled Log.Level.Debug && queuedCommands.Count >= 10 then
                 log.debug "Reached queue limit for %s:%i (Queued=%i, Pending=%i)" host port queuedCommands.Count pendingReplies.Count
 
