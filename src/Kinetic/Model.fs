@@ -36,7 +36,18 @@ type Bytes =
         | String s -> System.Text.Encoding.UTF8.GetBytes(s)
         | Lazy a -> let x2 = a |> Async.RunSynchronously
                     x2.Consume()      
-                      
+
+
+type Range = {  
+        Start : Bytes
+        End : Bytes
+        IsStartInclusive : bool 
+        IsEndInclusive : bool
+        MaxReturned : int option
+        Reverse : bool
+    }
+
+                                              
 // -------------------------------------------------------------------
 // Exceptions
 // -------------------------------------------------------------------
@@ -88,10 +99,14 @@ type Command =
     | Put of Put
     | Delete of Delete
     | GetLog of GetLog
+    // Pin operations
     | Erase
     | SecureErase
     | Lock
     | Unlock
+    // Background operations
+    | MediaScan of Range
+    | MediaOptimize of Range
 
     member x.Value =
         match x with
@@ -126,4 +141,4 @@ module Default =
     /// <returns> Pre-initialized <see cref="Delete"> Delete</see> command</returns>
     let delete = { Key = None ; Version = None ; Force = false ; Synchronization = Synchronization.WRITEBACK }
       
-
+    let range = { Start = None ; End = None ; IsStartInclusive = true ; IsEndInclusive = true ; MaxReturned = Option.None ; Reverse = false ;  }

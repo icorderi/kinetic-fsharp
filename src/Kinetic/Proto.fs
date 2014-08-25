@@ -36,6 +36,8 @@ type MessageType =
     | NOOP_RESPONSE = 29
     | FLUSHALLDATA = 32
     | FLUSHALLDATA_RESPONSE = 31
+    | BACKOP = 34
+    | BACKOP_RESPONSE = 33
     | PINOP = 36
     | PINOP_RESPONSE = 35
 
@@ -175,9 +177,36 @@ type KeyValue() =
     member val Synchronization = Synchronization.INVALID_SYNCHRONIZATION with get,set
 
 
+/// Key range operation
 [<ProtoContract>]
 [<AllowNullLiteral>]
-type Range() = class end
+type Range() =
+
+    [<ProtoMember(1)>]
+    member val StartKey : bytes = null with get,set
+
+    [<ProtoMember(2)>]
+    member val EndKey : bytes = null with get,set
+
+    [<ProtoMember(3)>]
+    member val StartKeyInclusive : bool = false with get,set
+
+    [<ProtoMember(4)>]
+    member val EndKeyInclusive : bool = false with get,set
+
+    /// The maximum number of keys returned
+    [<ProtoMember(5)>]
+    member val MaxReturned : int = 0 with get,set
+
+    /// The keys are searched for and returned in a reverse order.
+    [<ProtoMember(6)>]
+    member val Reverse : bool = false with get,set
+
+    // 7 is reserved
+
+    /// Range of keys
+    [<ProtoMember(8)>]
+    member val Keys  = new List<bytes>() with get,set
 
 
 [<ProtoContract>]
@@ -443,6 +472,37 @@ type GetLog() =
 type Security() = class end
 
 
+type BackgroundOperationType =
+    | INVALID_BACKOP = -1
+
+    /// Media scan is to check that the user data is readable, and
+    /// if the end to end integrity is known to the device, if the
+    /// end to end integrity field is correct.
+    | MEDIASCAN = 1
+
+    /// This performs optimizations of the media. Things like
+    /// defragmentation, compaction, garbage collection, compression
+    /// could be things accomplished using the media optimize command.
+    | MEDIAOPTIMIZE = 2
+
+
+/// These are long running background operations. The value of the
+/// system controlling background operations is that the system
+/// can make sure that during high performance periods that
+/// background operations are not being performed.
+[<ProtoContract>]
+[<AllowNullLiteral>]
+type BackgroundOperation() = 
+   
+    /// Determine the operation type
+    [<ProtoMember(1)>]
+    member val BackgroundOperationType = BackgroundOperationType.INVALID_BACKOP with get,set
+
+    /// The range on the request and results on the response
+    [<ProtoMember(2)>]
+    member val Range : Range = null with get,set
+
+
 type PinOperationType = 
     | INVALID_PINOP = -1
 
@@ -507,6 +567,10 @@ type Body() =
     /// Peer to Peer operations
     [<ProtoMember(4)>]
     member val P2POperation : P2POperation = null with get,set
+
+    /// Perform background operations
+    [<ProtoMember(5)>]
+    member val BackgroundOperation : BackgroundOperation = null with get,set
 
     /// Log operations
     [<ProtoMember(6)>]

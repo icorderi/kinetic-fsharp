@@ -51,6 +51,18 @@ type GetLog with
         y.Types.AddRange x.Types
         cmd // return the modified message
 
+type Range with
+    member x.Build (r : Kinetic.Proto.Range) =
+        r.StartKey <- x.Start.Consume()
+        r.EndKey <- x.End.Consume()
+        r.StartKeyInclusive <- x.IsStartInclusive
+        r.EndKeyInclusive <- x.IsEndInclusive       
+        r.MaxReturned <-  match x.MaxReturned with
+                          | Option.None -> 200 // TODO: change to device limit
+                          | Some y -> y
+        r.Reverse <- x.Reverse      
+        r
+
 let buildNoop (cmd : Kinetic.Proto.Command) = 
     cmd.Header.MessageType <- MessageType.NOOP
     cmd // return the modified message
@@ -59,6 +71,13 @@ let buildPinOperation (t : PinOperationType) (cmd : Kinetic.Proto.Command) =
     cmd.Header.MessageType <- MessageType.PINOP
     cmd.Body <- Body(PinOperation = PinOperation())
     cmd.Body.PinOperation.PinOperationType <- t
+    cmd
+
+let buildBackgroundOperation (t : BackgroundOperationType) (r : Range) (cmd : Kinetic.Proto.Command) = 
+    cmd.Header.MessageType <- MessageType.BACKOP
+    cmd.Body <- Body(BackgroundOperation = BackgroundOperation())
+    cmd.Body.BackgroundOperation.BackgroundOperationType <- t
+    cmd.Body.BackgroundOperation.Range <- r.Build(Kinetic.Proto.Range())
     cmd
 
 type Command with
@@ -73,5 +92,6 @@ type Command with
         | SecureErase -> buildPinOperation PinOperationType.SECURE_ERASE_PINOP
         | Lock -> buildPinOperation PinOperationType.LOCK_PINOP
         | Unlock -> buildPinOperation PinOperationType.UNLOCK_PINOP
-
+        | MediaOptimize r -> buildBackgroundOperation BackgroundOperationType.MEDIAOPTIMIZE r
+        | MediaScan r -> buildBackgroundOperation BackgroundOperationType.MEDIASCAN r
  
