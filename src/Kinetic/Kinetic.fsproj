@@ -42,6 +42,7 @@
       <HintPath>..\..\packages\protobuf-net.2.0.0.668\lib\net40\protobuf-net.dll</HintPath>
     </Reference>
     <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
@@ -72,11 +73,13 @@
     <Compile Include="Log.fs" />
     <Compile Include="Proto.fs" />
     <Compile Include="Model.fs" />
+    <Compile Include="Parsers.fs" />
     <Compile Include="Builders.fs" />
     <Compile Include="Network.fs" />
     <Compile Include="Client.fs" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Extensions.fs" />
     <None Include="packages.config" />
   </ItemGroup>
 </Project>

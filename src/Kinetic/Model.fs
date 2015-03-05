@@ -29,25 +29,14 @@ type Bytes =
     /// Lazy values will block until bytes are produced.
     member x.Consume() = 
         match x with 
-        | None -> null
+        | None -> [||]
         | Bytes bs -> bs
         | View (bs, offset, length) -> Array.sub bs offset length
         | Stream (s, length) -> failwith "Not implemented."
         | String s -> System.Text.Encoding.UTF8.GetBytes(s)
         | Lazy a -> let x2 = a |> Async.RunSynchronously
                     x2.Consume()      
-
-
-type Range = {  
-        Start : Bytes
-        End : Bytes
-        IsStartInclusive : bool 
-        IsEndInclusive : bool
-        MaxReturned : int option
-        Reverse : bool
-    }
-
-                                              
+                                                                  
 // -------------------------------------------------------------------
 // Exceptions
 // -------------------------------------------------------------------
@@ -59,6 +48,16 @@ exception InvalidClusterVersion of string * int64
 // -------------------------------------------------------------------
 // Commands
 // -------------------------------------------------------------------
+
+/// Represents a range
+type Range = {  
+        Start : Bytes
+        End : Bytes
+        IsStartInclusive : bool 
+        IsEndInclusive : bool
+        MaxReturned : int option
+        Reverse : bool
+    }
 
 /// Represents a get command
 type Get = { 
@@ -100,10 +99,11 @@ type Parameter =
     | Priority of Priority
     | TimeQuanta of int64
 
-/// Union type all commands
+/// Union type of all commands
 type Command =
     | Noop
     | Get of Get
+    | GetKeyRange of Range
     | Put of Put
     | Delete of Delete
     | GetLog of GetLog
@@ -127,10 +127,31 @@ type Command =
 // Reponses
 // -------------------------------------------------------------------
 
-type Response =
-    | Success of Kinetic.Proto.Command * bytes option
+type Metadata = {
+        Version : bytes
+        Tag : bytes
+        Algorithm : Kinetic.Proto.Algorithm
+    }
+
+type KeyValue = {
+        Key : bytes        
+        Value : bytes
+        Metadata : Metadata
+    }   
+
+type Response = 
+    | None
+    | KeyValue of KeyValue
+    | KeysRange of bytes list 
+    | Raw of Kinetic.Proto.Command * bytes option
+
+/// Union type of all responses
+type Result =
+    | Success of Response
     | Cancelled
-    | Error of exn   
+    | Error of exn  
+
+// -------------------------------------------------------------------
 
 /// Module containing default values for easier command instantiation
 module Default =
@@ -138,17 +159,17 @@ module Default =
     /// <summary> Default value for a get command </summary>
     /// <remarks> Usage, { get with Key = String "some-key" } </remarks>
     /// <returns> Pre-initialized <see cref="Get"> Get</see> command</returns>
-    let get = { Key = None ; Version = None ; MetadataOnly = false }
+    let get = { Key = Bytes.None ; Version = Bytes.None ; MetadataOnly = false }
 
     /// <summary> Default value for a put command </summary>
     /// <remarks> Usage, { put with Key = String "some-key" ; Value = String "my-value" } </remarks>
     /// <returns> Pre-initialized <see cref="Put"> Put</see> command</returns>
-    let put = { Key = None ; Value = None ; NewVersion = None ; CurrentVersion = None ; Force = false
+    let put = { Key = Bytes.None ; Value = Bytes.None ; NewVersion = Bytes.None ; CurrentVersion = Bytes.None ; Force = false
                 Tag = String "1337" ; Algorithm = Algorithm.SHA1 ; Synchronization = Synchronization.WRITEBACK }
 
     /// <summary> Default value for a delete command </summary>
     /// <remarks> Usage, { delete with Key = String "some-key" ; Force = true } </remarks>
     /// <returns> Pre-initialized <see cref="Delete"> Delete</see> command</returns>
-    let delete = { Key = None ; Version = None ; Force = false ; Synchronization = Synchronization.WRITEBACK }
+    let delete = { Key = Bytes.None ; Version = Bytes.None ; Force = false ; Synchronization = Synchronization.WRITEBACK }
       
-    let range = { Start = None ; End = None ; IsStartInclusive = true ; IsEndInclusive = true ; MaxReturned = Option.None ; Reverse = false ;  }
+    let range = { Start = Bytes.None ; End = Bytes.None ; IsStartInclusive = true ; IsEndInclusive = true ; MaxReturned = Option.None ; Reverse = false ;  }

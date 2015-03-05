@@ -39,6 +39,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "temp", "temp", "{76B47388-F128-4A24-873A-671BA4B684D8}"
 	ProjectSection(SolutionItems) = preProject
 		temp\quick.fsx = temp\quick.fsx
+		temp\benchmark.fsx = temp\benchmark.fsx
+		temp\multicast.fsx = temp\multicast.fsx
 	EndProjectSection
 EndProject
 Global

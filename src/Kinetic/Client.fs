@@ -6,6 +6,7 @@ open Kinetic.Proto
 open Kinetic.Network
 open Kinetic.Model
 open Kinetic.Model.Builders
+open Kinetic.Model.Parsers
 
 type Promise<'T>()=
 
@@ -22,17 +23,25 @@ type Promise<'T>()=
         signal.Set() |> ignore
 
     member x.Get () = 
-       signal.WaitOne() |> ignore
+       x.Wait()
        value.Value 
 
     member x.AsyncGet () = 
         async {
-            do! Async.AwaitWaitHandle signal |> Async.Ignore
+            do! x.AsyncWait()
             return value.Value 
         }
 
+    member x.Wait () = 
+        signal.WaitOne() |> ignore
+
+    member x.AsyncWait () = 
+        async {
+            do! Async.AwaitWaitHandle signal |> Async.Ignore
+        }
+
 type internal ClientMessage = 
-    | Operation of Kinetic.Proto.Command*Bytes*Promise<Response>
+    | Operation of Kinetic.Proto.Command * Bytes * Promise<Result> * Parser
     | Signal of System.Threading.ManualResetEvent
  
 
@@ -79,12 +88,10 @@ type Client(host:string, port:int) as this =
         
         msg.CommandBytes <- ms.ToArray()
         msg
+           
+    let queuedCommands = new FSharp.Control.BlockingQueueAgent<ClientMessage>(10) // TODO use constant as default
 
-    let pendingLimit = 10 // TODO change to property
-
-    let queuedCommands = new FSharp.Control.BlockingQueueAgent<ClientMessage>(10) // TODO make argument a property
-
-    let pendingReplies = new System.Collections.Concurrent.ConcurrentDictionary<int64,Promise<Response>>()
+    let pendingReplies = new System.Collections.Concurrent.ConcurrentDictionary<int64,Promise<Result> * Parser>()
 
     let unsolicitedStatus = new Event<_>()
 
@@ -95,22 +102,22 @@ type Client(host:string, port:int) as this =
     let sender = async {
                     while running do
 
-                        if log.isEnabled Log.Level.Debug && pendingReplies.Count >= pendingLimit then
+                        if log.isEnabled Log.Level.Debug && pendingReplies.Count >= this.PendingLimit then
                             log.debug "Reached pending limit for %s:%i (Queued=%i, Pending=%i)" host port queuedCommands.Count pendingReplies.Count
 
-                        while pendingReplies.Count > pendingLimit do
+                        while pendingReplies.Count > this.PendingLimit do
                             do! Async.Sleep 0
 
                         let! x = queuedCommands.AsyncGet() 
                         match x with
                         | Signal s -> s.Set() |> ignore
-                        | Operation (cmd, value, p) ->
+                        | Operation (cmd, value, promise, parser) ->
                             if log.isEnabled Log.Level.Debug then
                                 log.debug "Transmitting Seq=%i on %s:%i (Queued=%i, Pending=%i)" cmd.Header.Sequence host port queuedCommands.Count pendingReplies.Count
                                                         
                             let msg = cmd |> addHeader |> wrapAuthentication
 
-                            pendingReplies.TryAdd(cmd.Header.Sequence,p) |> ignore // TODO make sure it got added instead of ignoring it
+                            pendingReplies.TryAdd(cmd.Header.Sequence, (promise, parser)) |> ignore // TODO make sure it got added instead of ignoring it
 
                             do! AsyncSend msg (value.Consume()) tcp // TODO dont consume here!! let the network consume it                    
                     }
@@ -141,21 +148,22 @@ type Client(host:string, port:int) as this =
                         let cmd : Kinetic.Proto.Command = ProtoBuf.Serializer.Deserialize(ms)
 
                         if cmd.Header.ConnectionID <> this.ConnectionID then
-                            log.error "TODO: ConnectionId doesn't match, throw exception"
+                           // log.error "TODO: ConnectionId doesn't match, received %A expected %A. Throw exception." cmd.Header.ConnectionID this.ConnectionID 
+                           ()
 
                         match resp.AuthenticationType with
                         | AuthenticationType.UNSOLICITEDSTATUS ->
                             unsolicitedStatus.Trigger cmd.Status
                         | _ ->
-                            let p = pendingReplies.[cmd.Header.AckSequence]
+                            let promise, parser = pendingReplies.[cmd.Header.AckSequence]
                             pendingReplies.TryRemove(cmd.Header.AckSequence) |> ignore
 
                             if log.isEnabled Log.Level.Debug then
                                 log.debug "Received Seq=%i on %s:%i (Queued=%i, Pending=%i)" cmd.Header.AckSequence host port queuedCommands.Count pendingReplies.Count
                                                                    
                             match cmd.Status.Code with
-                            | StatusCode.SUCCESS -> p.Set <| Success (cmd, value)
-                            | _ -> p.Set <| Error (RemoteException (cmd.Status)) 
+                            | StatusCode.SUCCESS -> promise.Set <| (Success <| parser (resp, cmd, value))
+                            | _ -> promise.Set <| Error (RemoteException (cmd.Status)) 
                     } 
 
     let handshake() = 
@@ -183,6 +191,12 @@ type Client(host:string, port:int) as this =
             config <- Some cmd.Body.GetLog.Configuration
             limits <- Some cmd.Body.GetLog.Limits
         }
+
+    member val PendingLimit = 2 with get,set
+
+    member this.QueueLimit 
+        with get() = queuedCommands.Capacity 
+        and  set v = queuedCommands.Capacity <- v
 
     member this.Configuration with get() = config.Value
 
@@ -230,9 +244,15 @@ type Client(host:string, port:int) as this =
     member this.Send command = this.AsyncSend command |> Async.RunSynchronously
 
     member this.SendAndReceive command = 
-        let p : Promise<Response> = this.Send command
+        let p : Promise<Result> = this.Send command
         p.Get()
-                
+
+    member this.AsyncSendAndReceive command =
+        async{
+            let! p = this.AsyncSend command
+            return! p.AsyncGet()
+        }            
+
     member this.AsyncSend (command: Command) =
         async {   
             let cmd = Command(Header=Header()) |> command.Build
@@ -241,7 +261,7 @@ type Client(host:string, port:int) as this =
                 log.debug "Reached queue limit for %s:%i (Queued=%i, Pending=%i)" host port queuedCommands.Count pendingReplies.Count
 
             let p = Promise()
-            do! queuedCommands.AsyncAdd(Operation (cmd, command.Value, p))
+            do! queuedCommands.AsyncAdd(Operation (cmd, command.Value, p, command.Parser()))
 
             if log.isEnabled Log.Level.Debug then
                 log.debug "Enqueued command (Queued=%i, Pending=%i)" queuedCommands.Count pendingReplies.Count
@@ -253,8 +273,8 @@ type Client(host:string, port:int) as this =
         let s = new System.Threading.ManualResetEvent(false)
         queuedCommands.Add <| Signal s
         s.WaitOne() |> ignore
-        for x in pendingReplies.Values do
-            x.Get() |> ignore
+        for (p,_) in pendingReplies.Values do
+            p.Get() |> ignore
         
     /// Applies SendAndReceive to right hand side of operator
     static member (<+) (c : Client, rs) = c.SendAndReceive rs
@@ -272,6 +292,8 @@ type Client(host:string, port:int) as this =
     /// Applies SendAsync to right hand side of operator and discards result
     static member (<--) (c : Client, rs) = c.AsyncSend rs |> Async.Ignore
 
+    override this.ToString() = 
+        sprintf "%s:%i" this.Host this.Port
 
 
                              

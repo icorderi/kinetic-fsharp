@@ -99,5 +99,3 @@ module Log =
     let flush = defaultLogger.flush
     let close = defaultLogger.close
 
-
-

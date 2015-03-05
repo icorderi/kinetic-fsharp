@@ -317,14 +317,17 @@ type Interface() =
     [<ProtoMember(1)>]
     member val Name : string = null with get,set
 
+    /// Defined as bytes on the protocol
     [<ProtoMember(2)>]
-    member val MAC : bytes = null with get,set
+    member val MAC : string = null with get,set
 
+    /// Defined as bytes on the protocol
     [<ProtoMember(3)>]
-    member val ipv4Address : bytes = null with get,set
+    member val ipv4Address : string = null with get,set
 
+    /// Defined as bytes on the protocol
     [<ProtoMember(4)>]
-    member val ipv6Address : bytes = null with get,set
+    member val ipv6Address : string = null with get,set
 
 
 [<ProtoContract>]
@@ -343,12 +346,14 @@ type Configuration() =
     member val Model : string = null with get,set
 
     /// Device Serial number (SN)
+    /// Defined as bytes on the protocol
     [<ProtoMember(7)>]
-    member val SerialNumber : bytes = null with get,set 
+    member val SerialNumber : string = null with get,set 
 
      /// Device world wide name (WWN)
+     /// Defined as bytes on the protocol
     [<ProtoMember(14)>]
-    member val WorldWideName : bytes = null with get,set 
+    member val WorldWideName : string = null with get,set 
 
     /// This is the vendor specific version of the software on the drive in dot notation
     /// if this is not set or ends with "x" this is test code.
@@ -454,8 +459,9 @@ type DeviceLog() =
     /// If the name is not found, the get log returns NOT_FOUND.
     ///
     /// There can be only one Device in the list of logs that can be retrieved.!
+    /// Defined as bytes on the protocol
     [<ProtoMember(1)>]
-    member val Name : bytes = null with get,set
+    member val Name : string = null with get,set
 
 
 [<ProtoContract>]
@@ -480,8 +486,9 @@ type GetLog() =
     [<ProtoMember(6)>]
     member val Statistics : List<Statistics> = new List<Statistics>() with get,set
 
+    /// Defined as bytes on the protocol
     [<ProtoMember(7)>]
-    member val Messages : bytes = null with get,set
+    member val Messages : string = null with get,set
 
     [<ProtoMember(8)>]
     member val Limits : DeviceLimits = null with get,set
@@ -680,6 +687,9 @@ type Status() =
     /// optional information comes with status
     [<ProtoMember(3)>] 
     member val DetailedMessage : bytes = null with get,set
+
+    override this.ToString() =
+        sprintf "%A %s" this.Code this.StatusMessage
 
 
 [<ProtoContract>]

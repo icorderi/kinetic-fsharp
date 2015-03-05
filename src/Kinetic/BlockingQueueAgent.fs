@@ -73,7 +73,7 @@ type BlockingQueueAgent<'T>(maxLength) =
         // Start with an empty queue
         emptyQueue() )
 
-    member val Capacity = maxLength with get
+    member val Capacity = maxLength with get, set
 
     /// Asynchronously adds item to the queue. The operation ends when
     /// there is a place for the item. If the queue is full, the operation
